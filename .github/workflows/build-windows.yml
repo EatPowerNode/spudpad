@@ -18,28 +18,44 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'  # match your go.mod; bump to 1.24 if needed
+          go-version: '1.22'
 
       - name: Install fyne-cross
         run: go install github.com/fyne-io/fyne-cross@latest
 
       - name: Build Windows executable with fyne-cross
         run: |
+          export CGO_ENABLED=1
           fyne-cross windows -arch=amd64 -app-id com.eatpowernode.spudpad -name SpudPad
-          # Optional: add -release for stripped/smaller binary later
 
-      - name: Debug: List output files
+      - name: Debug output directory
         run: |
-          ls -la fyne-cross/dist/windows-amd64/ || echo "dist folder not found"
-          find fyne-cross -type f || echo "No files in fyne-cross dir"
+          echo "Listing fyne-cross/dist contents:"
+          ls -la fyne-cross/dist || echo "No dist folder"
+          echo ""
+          echo "Listing windows-amd64 contents:"
+          ls -la fyne-cross/dist/windows-amd64 || echo "No windows-amd64 folder"
+          echo ""
+          echo "All .exe files found:"
+          find fyne-cross -name "*.exe" || echo "No .exe files found"
 
-      - name: Upload Windows artifact (try common names)
+      - name: Extract exe from zip (if zip exists)
+        run: |
+          if [ -f "fyne-cross/dist/windows-amd64/SpudPad.zip" ]; then
+            unzip -j "fyne-cross/dist/windows-amd64/SpudPad.zip" "SpudPad.exe" -d fyne-cross/dist/windows-amd64/
+            echo "Extracted SpudPad.exe from zip"
+          else
+            echo "No zip found - using raw exe from bin if present"
+          fi
+          ls -la fyne-cross/dist/windows-amd64/
+
+      - name: Upload Windows artifact (standalone exe)
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: SpudPad-Windows
           path: |
-            fyne-cross/dist/windows-amd64/*.exe
             fyne-cross/dist/windows-amd64/SpudPad.exe
-            fyne-cross/dist/windows-amd64/spudpad.exe
-          if-no-files-found: warn   # changed to warn so we see logs even if missing
+            fyne-cross/bin/windows-amd64/SpudPad.exe   # fallback if no zip extract
+          if-no-files-found: warn
           retention-days: 7
