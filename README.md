@@ -16,7 +16,14 @@ It's a potato — no bloat, no Markdown traps, no nonsense.
 
 ### Screenshots
 
-(Add your Valentine's rose screenshot here later if you want — upload to repo or use imgur link)
+Coming soon.
+
+## Downloads
+
+- **[Windows exe (latest dev build)](https://github.com/EatPowerNode/spudpad/releases/download/latest-dev/SpudPad-Windows.zip)**  
+  (built from main branch – test & report bugs!)
+
+Other platforms coming soon.
 
 ### Building
 
