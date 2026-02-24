@@ -50,23 +50,109 @@ func main() {
 		widget.NewToolbarAction(theme.FolderOpenIcon(), openFile),
 		widget.NewToolbarAction(theme.DocumentSaveIcon(), saveFile),
 		widget.NewToolbarSeparator(),
-		widget.NewToolbarAction(theme.ContentCutIcon(), func() { /*textEditor.Cut()*/ }),
-		widget.NewToolbarAction(theme.ContentCopyIcon(), func() { /*textEditor.Copy()*/ }),
-		widget.NewToolbarAction(theme.ContentPasteIcon(), func() { /*textEditor.Paste()*/ }),
-		//widget.NewToolbarSpacer(),
-		//container.NewCenter(wrapCheck),
+
+		// Cut
+		widget.NewToolbarAction(theme.ContentCutIcon(), func() {
+			selected := textEditor.SelectedText()
+			if selected == "" {
+				return
+			}
+
+			allRunes := []rune(textEditor.Text)
+			selRuneLen := len([]rune(selected))
+
+			selectionEnd := textEditor.CursorColumn
+			selectionStart := selectionEnd - selRuneLen
+
+			if selectionStart < 0 || selectionStart > len(allRunes) {
+				fmt.Printf("Cut: invalid selection bounds (start=%d, end=%d, textLen=%d)\n",
+					selectionStart, selectionEnd, len(allRunes))
+				selectionStart = 0
+				selectionEnd = len(allRunes)
+			}
+
+			fmt.Printf("Cut debug: start=%d end=%d selected=%q\n", selectionStart, selectionEnd, selected)
+
+			newRunes := append(allRunes[:selectionStart], allRunes[selectionEnd:]...)
+
+			myApp.Clipboard().SetContent(selected)
+			textEditor.SetText(string(newRunes))
+
+			textEditor.CursorColumn = selectionStart
+			textEditor.Refresh()
+			updateStatus(textEditor.Text)
+		}),
+
+		// Copy
+		widget.NewToolbarAction(theme.ContentCopyIcon(), func() {
+			selected := textEditor.SelectedText()
+			if selected != "" {
+				myApp.Clipboard().SetContent(selected)
+			}
+		}),
+
+		// Paste
+		widget.NewToolbarAction(theme.ContentPasteIcon(), func() {
+			clip := myApp.Clipboard().Content()
+			if clip == "" {
+				return
+			}
+
+			runes := []rune(textEditor.Text)
+
+			selected := textEditor.SelectedText()
+			selRuneLen := len([]rune(selected))
+
+			start := textEditor.CursorColumn - selRuneLen
+
+			if start < 0 {
+				start = 0
+			}
+
+			if start > len(runes) {
+				start = len(runes)
+			}
+
+			clipRunes := []rune(clip)
+
+			newRunes := make([]rune, 0, len(runes)+len(clipRunes))
+			newRunes = append(newRunes, runes[:start]...)
+			newRunes = append(newRunes, clipRunes...)
+			newRunes = append(newRunes, runes[textEditor.CursorColumn:]...)
+
+			newText := string(newRunes)
+
+			textEditor.SetText(newText)
+
+			textEditor.CursorColumn = start + len(clipRunes)
+			textEditor.Refresh()
+			updateStatus(textEditor.Text)
+		}),
+
 		widget.NewToolbarSpacer(),
+
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
 			dialog.ShowInformation("About SpudPad", "Ultra-minimal text editor\nNo Markdown, no nonsense.", myWindow)
 		}),
 	)
 
-	// Layout: toolbar top, editor fill, status bottom
-	content := container.NewBorder(
-		toolbar,
-		status,
+	// Scroll container around the editor
+	editorScroll := container.NewVScroll(textEditor)
+	editorScroll.SetMinSize(fyne.NewSize(0, 0))
+
+	// Bottom row: word wrap checkbox on left, status on right
+	bottomRow := container.NewBorder(
 		nil, nil,
-		textEditor,
+		wrapCheck, // left
+		status,    // right
+	)
+
+	// Main layout
+	content := container.NewBorder(
+		toolbar,   // top
+		bottomRow, // bottom
+		nil, nil,
+		editorScroll, // center
 	)
 
 	myWindow.SetContent(content)
@@ -74,7 +160,7 @@ func main() {
 }
 
 func updateStatus(_ string) {
-	row := textEditor.CursorRow + 1 // 0-based to 1-based
+	row := textEditor.CursorRow + 1
 	col := textEditor.CursorColumn + 1
 	charCount := len(textEditor.Text)
 	status.SetText(fmt.Sprintf("Ln %d, Col %d   |   %d characters", row, col, charCount))
@@ -130,7 +216,6 @@ func saveFile() {
 		return
 	}
 
-	// Quick save
 	writer, err := storage.Writer(currentFile)
 	if err != nil {
 		dialog.ShowError(err, myWindow)
@@ -143,14 +228,6 @@ func saveFile() {
 		dialog.ShowError(err, myWindow)
 		return
 	}
-
-	// Optional: show brief "Saved" in status?
-	// status.SetText(status.Text + "   Saved")
-	// go func() {
-	// 	<-fyne.CurrentApp().Driver().RunOnMainWhenIdle(func() {
-	// 		updateStatus(textEditor.Text) // restore normal status
-	// 	})
-	// }()
 }
 
 func saveAs() {
