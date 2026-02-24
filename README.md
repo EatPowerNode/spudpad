@@ -15,8 +15,11 @@ It's a potato — no bloat, no Markdown traps, no nonsense.
 - Classic Notepad-like behavior (no wrap by default, horizontal scroll)
 
 ### Screenshots
+None yet
 
-(Add your Valentine's rose screenshot here later if you want — upload to repo or use imgur link)
+### Downloads
+Latest-dev version has been build by the runner and uploaded here:
+https://github.com/EatPowerNode/spudpad/releases/download/latest-dev/SpudPad.exe
 
 ### Building
 
